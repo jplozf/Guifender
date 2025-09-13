@@ -5,8 +5,26 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Guifender"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
-    </Grid>
+        Title="Guifender" Height="450" Width="800">
+    
+    <DockPanel>
+        
+        <StatusBar DockPanel.Dock="Bottom">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Status: Ready" Margin="5"/>
+                <TextBlock Text=" | " Margin="5"/>
+                <TextBlock Text="User: Admin" Margin="5"/>
+            </StackPanel>
+        </StatusBar>
+        <TabControl>
+            <TabItem Header="Computer Status">
+                <ScrollViewer>
+                    <TextBlock x:Name="ComputerStatusTextBlock" Margin="10" Text="Loading..."/>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Tab 2">
+                <TextBlock Text="Content for Tab 2" Margin="10"/>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
 </Window>
