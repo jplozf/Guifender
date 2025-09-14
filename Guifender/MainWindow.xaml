@@ -17,12 +17,26 @@
             </StackPanel>
         </StatusBar>
         <TabControl>
-            <TabItem Header="Computer Status">
+            <TabItem Header="Status">
                 <ScrollViewer>
-                    <TextBlock x:Name="ComputerStatusTextBlock" Margin="10" Text="Loading..."/>
+                    <Grid x:Name="ComputerStatusGrid" Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                    </Grid>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="Tab 2">
+            <TabItem Header="Scan">
+                <TextBlock Text="Content for Tab 2" Margin="10"/>
+            </TabItem>
+            <TabItem Header="Update">
+                <TextBlock Text="Content for Tab 2" Margin="10"/>
+            </TabItem>
+            <TabItem Header="Config">
+                <TextBlock Text="Content for Tab 2" Margin="10"/>
+            </TabItem>
+            <TabItem Header="About">
                 <TextBlock Text="Content for Tab 2" Margin="10"/>
             </TabItem>
         </TabControl>

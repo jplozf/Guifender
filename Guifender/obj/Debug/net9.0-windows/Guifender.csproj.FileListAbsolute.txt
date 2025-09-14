@@ -373,3 +373,5 @@ C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guife
 C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guifender.genruntimeconfig.cache
 C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\ref\Guifender.dll
 C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\App.baml
+C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guifender.Properties.Resources.resources
+C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guifender.csproj.GenerateResource.cache

@@ -10,9 +10,59 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <CommitCount Condition="'$(CommitCount)' == ''">0</CommitCount>
+    <CommitHash Condition="'$(CommitHash)' == ''">0000000</CommitHash>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyVersion>0.$(CommitCount).0.0</AssemblyVersion>
+    <FileVersion>0.$(CommitCount).0.0</FileVersion>
+    <InformationalVersion>0.$(CommitCount)-$(CommitHash)</InformationalVersion>
+  </PropertyGroup>
+
+  <Target Name="GenerateVersionInfo" BeforeTargets="CoreCompile">
+    <Exec Command="git rev-list --count HEAD" ConsoleToMsBuild="true">
+      <Output PropertyName="GitCommitCount" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMsBuild="true">
+      <Output PropertyName="GitCommitHash" TaskParameter="ConsoleOutput" />
+    </Exec>
+
+    <PropertyGroup>
+      <TrimmedGitCommitCount>$([System.Text.RegularExpressions.Regex]::Replace($(GitCommitCount), '\s', ''))</TrimmedGitCommitCount>
+      <TrimmedGitCommitHash>$([System.Text.RegularExpressions.Regex]::Replace($(GitCommitHash), '\s', ''))</TrimmedGitCommitHash>
+    </PropertyGroup>
+    <PropertyGroup>
+      <TrimmedGitCommitCount>$([System.Text.RegularExpressions.Regex]::Replace($(GitCommitCount), '\s', ''))</TrimmedGitCommitCount>
+      <TrimmedGitCommitHash>$([System.Text.RegularExpressions.Regex]::Replace($(GitCommitHash), '\s', ''))</TrimmedGitCommitHash>
+    </PropertyGroup>
+    <Exec Command="echo using System; &gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo. &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo namespace Guifender &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo { &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo     public static class VersionInfo &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo     { &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo         public const string CommitCount = &quot;$(TrimmedGitCommitCount)&quot;; &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo         public const string CommitHash = &quot;$(TrimmedGitCommitHash)&quot;; &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo     } &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <Exec Command="echo } &gt;&gt; &quot;$(IntermediateOutputPath)VersionInfo.cs&quot;" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)VersionInfo.cs" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <None Remove="app_icon.png" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.5.2" />
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />    
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app_icon.png" />
   </ItemGroup>
 
 </Project>
