@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|c:\\users\\jplig\\projets\\cs.net\\guifender\\guifender\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|solutionrelative:guifender\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|c:\\users\\jplig\\projets\\cs.net\\guifender\\guifender\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|solutionrelative:guifender\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -23,6 +27,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "App.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\App.xaml.cs",
+              "RelativeDocumentMoniker": "Guifender\\App.xaml.cs",
+              "ToolTip": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\App.xaml.cs",
+              "RelativeToolTip": "Guifender\\App.xaml.cs",
+              "ViewState": "AgIAABkAAAAAAAAAAAAawCwAAAA1AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T17:58:19.657Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Guifender\\MainWindow.xaml.cs",
@@ -35,7 +52,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "Guifender.csproj",
               "DocumentMoniker": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\Guifender.csproj",
               "RelativeDocumentMoniker": "Guifender\\Guifender.csproj",
@@ -43,8 +60,7 @@
               "RelativeToolTip": "Guifender\\Guifender.csproj",
               "ViewState": "AgIAABUAAAAAAAAAAAAAAEQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-09-14T06:50:39.694Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-14T06:50:39.694Z"
             }
           ]
         }
