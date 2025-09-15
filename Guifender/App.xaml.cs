@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
 using System.Linq;
+using System.Threading;
 
 namespace Guifender;
 
@@ -15,8 +16,20 @@ namespace Guifender;
 /// </summary>
 public partial class App : System.Windows.Application
 {
+    private const string AppName = "GuifenderSingleton";
+    private static Mutex _mutex = null;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
+        _mutex = new Mutex(true, AppName, out bool createdNew);
+
+        if (!createdNew)
+        {
+            // App is already running.
+            System.Windows.Application.Current.Shutdown();
+            return;
+        }
+
         base.OnStartup(e);
         await CheckForNewVersionAsync();
     }
