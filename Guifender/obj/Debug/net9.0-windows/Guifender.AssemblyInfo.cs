@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Guifender")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("0.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.0-0000000+3cd89a18727463ec1e64d9d2cb1e0c1f1772a9ef")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.0-0000000+6313a8e88af4e070bd4a9e045d87f147501e6fc0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Guifender")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Guifender")]
 [assembly: System.Reflection.AssemblyVersionAttribute("0.0.0.0")]
