@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Management.Automation;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.ServiceProcess;
 using System.Text;
@@ -12,9 +13,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Hardcodet.Wpf.TaskbarNotification;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Guifender
 {
@@ -95,7 +99,7 @@ namespace Guifender
             Directory.CreateDirectory(settingsDir);
             _settingsFilePath = Path.Combine(settingsDir, "settings.json");
             LoadSettings();
-            this.Title = $"Guifender {MajorVersion}.{VersionInfo.CommitCount}-{VersionInfo.CommitHash}";
+            this.Title = GetVersionInfo();
             SetupTaskbarIcon();
             SetStatus("Ready", clearAfter: false);
             _ = InitializeDataAsync();
@@ -103,15 +107,48 @@ namespace Guifender
         }
 
         #region Core App Logic
+        private string GetVersionInfo()
+        {
+            try
+            {
+                string commitCount = RunGitCommand("rev-list --count HEAD").Trim();
+                string commitHash = RunGitCommand("rev-parse --short HEAD").Trim();
+
+                if (!string.IsNullOrEmpty(commitCount) && !string.IsNullOrEmpty(commitHash))
+                {
+                    return $"Guifender {MajorVersion}.{commitCount}-{commitHash}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not get version info from Git: {ex.Message}");
+            }
+            return "Guifender";
+        }
+
+        private string RunGitCommand(string arguments)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "git.exe",
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                }
+            };
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            return output;
+        }
+
         private void SetupTaskbarIcon()
         {
             var resourceInfo = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/app_icon.png"));
-            if (resourceInfo == null || resourceInfo.Stream == null)
-            {
-                System.Windows.MessageBox.Show("Resource 'app_icon.png' not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
+            if (resourceInfo == null || resourceInfo.Stream == null) { System.Windows.MessageBox.Show("Resource 'app_icon.png' not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error); return; }
             using (Stream iconStream = resourceInfo.Stream)
             {
                 BitmapImage mainWindowIcon = new BitmapImage();
@@ -121,29 +158,20 @@ namespace Guifender
                 mainWindowIcon.EndInit();
                 Icon = mainWindowIcon;
                 iconStream.Seek(0, SeekOrigin.Begin);
-
                 _notifyIcon = new TaskbarIcon();
                 System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(iconStream);
                 _notifyIcon.Icon = System.Drawing.Icon.FromHandle(bitmap.GetHicon());
             }
-
             _notifyIcon.ToolTipText = this.Title;
             _notifyIcon.TrayLeftMouseDown += (s, e) => { Show(); WindowState = WindowState.Normal; };
-
             var contextMenu = new ContextMenu();
             var hideShowMenuItem = new MenuItem { Header = "Hide / Show" };
-            hideShowMenuItem.Click += (s, e) =>
-            {
-                if (IsVisible) Hide();
-                else { Show(); WindowState = WindowState.Normal; }
-            };
+            hideShowMenuItem.Click += (s, e) => { if (IsVisible) Hide(); else { Show(); WindowState = WindowState.Normal; } };
             contextMenu.Items.Add(hideShowMenuItem);
-
             var exitMenuItem = new MenuItem { Header = "Exit" };
             exitMenuItem.Click += (s, e) => Dispatcher.Invoke(RequestExit);
             contextMenu.Items.Add(exitMenuItem);
             _notifyIcon.ContextMenu = contextMenu;
-
             StateChanged += (s, e) => { if (WindowState == WindowState.Minimized) Hide(); };
         }
 
@@ -152,17 +180,11 @@ namespace Guifender
             bool wasHidden = !this.IsVisible;
             if (wasHidden) Show();
             this.Activate();
-
             if (ConfirmOnExit)
             {
                 var result = System.Windows.MessageBox.Show("Are you sure you want to exit?", "Confirm Exit", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (result == MessageBoxResult.No)
-                {
-                    if (wasHidden) Hide();
-                    return;
-                }
+                if (result == MessageBoxResult.No) { if (wasHidden) Hide(); return; }
             }
-
             _isExiting = true;
             SetStatus("Exiting...", clearAfter: false);
             SaveSettings();
@@ -172,19 +194,13 @@ namespace Guifender
         private async void SetStatus(string message, bool clearAfter = true)
         {
             StatusText = message;
-
             if (clearAfter)
             {
                 _statusClearTokenSource.Cancel();
                 _statusClearTokenSource = new CancellationTokenSource();
                 var token = _statusClearTokenSource.Token;
-
                 await Task.Delay(5000);
-
-                if (!token.IsCancellationRequested)
-                {
-                    StatusText = "Ready";
-                }
+                if (!token.IsCancellationRequested) { StatusText = "Ready"; }
             }
         }
 
@@ -192,20 +208,10 @@ namespace Guifender
         {
             try
             {
-                if (File.Exists(_settingsFilePath))
-                {
-                    _settings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(_settingsFilePath)) ?? new AppSettings();
-                }
-                else
-                {
-                    _settings = new AppSettings();
-                }
+                if (File.Exists(_settingsFilePath)) { _settings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(_settingsFilePath)) ?? new AppSettings(); }
+                else { _settings = new AppSettings(); }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading settings: {ex.Message}");
-                _settings = new AppSettings();
-            }
+            catch (Exception ex) { Debug.WriteLine($"Error loading settings: {ex.Message}"); _settings = new AppSettings(); }
 
             ConfirmOnExit = _settings.ConfirmOnExit;
             MinimizeToTrayOnClose = _settings.MinimizeToTrayOnClose;
@@ -217,18 +223,9 @@ namespace Guifender
             _lastUpdateTime = _settings.LastUpdateTime;
             LastUpdateCheckString = _lastUpdateTime.HasValue ? _lastUpdateTime.Value.ToString("g") : "Never";
 
-            this.Top = _settings.WindowTop;
-            this.Left = _settings.WindowLeft;
-            this.Height = _settings.WindowHeight;
-            this.Width = _settings.WindowWidth;
-            this.WindowState = _settings.WindowState;
-
+            this.Top = _settings.WindowTop; this.Left = _settings.WindowLeft; this.Height = _settings.WindowHeight; this.Width = _settings.WindowWidth; this.WindowState = _settings.WindowState;
             ValidatePosition();
-
-            if (_settings.SelectedTabIndex >= 0 && _settings.SelectedTabIndex < MainTabControl.Items.Count)
-            {
-                MainTabControl.SelectedIndex = _settings.SelectedTabIndex;
-            }
+            if (_settings.SelectedTabIndex >= 0 && _settings.SelectedTabIndex < MainTabControl.Items.Count) { MainTabControl.SelectedIndex = _settings.SelectedTabIndex; }
         }
 
         private void SaveSettings()
@@ -245,17 +242,10 @@ namespace Guifender
                 _settings.LastUpdateTime = this._lastUpdateTime;
                 _settings.SelectedTabIndex = MainTabControl.SelectedIndex;
                 _settings.WindowState = this.WindowState == WindowState.Minimized ? WindowState.Normal : this.WindowState;
-                _settings.WindowTop = this.RestoreBounds.Top;
-                _settings.WindowLeft = this.RestoreBounds.Left;
-                _settings.WindowHeight = this.RestoreBounds.Height;
-                _settings.WindowWidth = this.RestoreBounds.Width;
-
+                _settings.WindowTop = this.RestoreBounds.Top; _settings.WindowLeft = this.RestoreBounds.Left; _settings.WindowHeight = this.RestoreBounds.Height; _settings.WindowWidth = this.RestoreBounds.Width;
                 File.WriteAllText(_settingsFilePath, JsonConvert.SerializeObject(_settings, Formatting.Indented));
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error saving settings: {ex.Message}");
-            }
+            catch (Exception ex) { Debug.WriteLine($"Error saving settings: {ex.Message}"); }
         }
 
         private void ValidatePosition()
@@ -264,18 +254,9 @@ namespace Guifender
             foreach (var screen in System.Windows.Forms.Screen.AllScreens)
             {
                 var windowRect = new System.Drawing.Rectangle((int)this.Left, (int)this.Top, (int)this.Width, (int)this.Height);
-                if (screen.WorkingArea.IntersectsWith(windowRect))
-                {
-                    isVisible = true;
-                    break;
-                }
+                if (screen.WorkingArea.IntersectsWith(windowRect)) { isVisible = true; break; }
             }
-
-            if (!isVisible)
-            {
-                this.Left = 100;
-                this.Top = 100;
-            }
+            if (!isVisible) { this.Left = 100; this.Top = 100; }
         }
         #endregion
 
@@ -283,27 +264,11 @@ namespace Guifender
         private void SetupUpdateScheduler()
         {
             _updateSchedulerTimer?.Dispose();
-
-            if (!IsScheduledUpdateEnabled || ScheduledUpdateIntervalHours <= 0)
-            {
-                NextScheduledUpdateString = "Disabled";
-                return;
-            }
-
+            if (!IsScheduledUpdateEnabled || ScheduledUpdateIntervalHours <= 0) { NextScheduledUpdateString = "Disabled"; return; }
             var interval = TimeSpan.FromHours(ScheduledUpdateIntervalHours);
             DateTime lastRun = _lastUpdateTime ?? DateTime.MinValue;
             DateTime nextRun = lastRun.Add(interval);
-
-            TimeSpan dueTime;
-            if (nextRun < DateTime.Now)
-            {
-                dueTime = TimeSpan.Zero; // Time has passed, run immediately
-            }
-            else
-            {
-                dueTime = nextRun - DateTime.Now;
-            }
-
+            TimeSpan dueTime = (nextRun < DateTime.Now) ? TimeSpan.Zero : nextRun - DateTime.Now;
             NextScheduledUpdateString = DateTime.Now.Add(dueTime).ToString("g");
             _updateSchedulerTimer = new System.Threading.Timer(ScheduledUpdateTimer_Callback, null, dueTime, interval);
         }
@@ -315,7 +280,7 @@ namespace Guifender
             await Dispatcher.InvokeAsync(() =>
             {
                 SetStatus(success ? "Scheduled update complete." : "Scheduled update failed.");
-                SetupUpdateScheduler(); // Recalculate next run time
+                SetupUpdateScheduler();
             });
         }
 
@@ -329,10 +294,7 @@ namespace Guifender
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                if (!isScheduled)
-                {
-                    UpdateOutputText = "";
-                }
+                if (!isScheduled) { UpdateOutputText = ""; }
                 SetStatus("Updating signatures...", clearAfter: false);
             });
 
@@ -356,50 +318,26 @@ namespace Guifender
                     StringBuilder sb = new StringBuilder();
                     if (ps.Streams.Error.Count > 0)
                     {
-                        foreach (var error in ps.Streams.Error)
-                        {
-                            sb.AppendLine($"ERROR: {error.ToString()}");
-                        }
+                        foreach (var error in ps.Streams.Error) { sb.AppendLine($"ERROR: {error.ToString()}"); }
                     }
                     else
                     {
-                        if (psOutput != null)
-                        {
-                            foreach (var item in psOutput)
-                            {
-                                if (item != null)
-                                {
-                                    sb.AppendLine(item.ToString());
-                                }
-                            }
-                        }
-                        if (sb.Length == 0)
-                        {
-                            sb.AppendLine("Command completed with no output.");
-                        }
+                        if (psOutput != null) { foreach (var item in psOutput) { if (item != null) { sb.AppendLine(item.ToString()); } } }
+                        if (sb.Length == 0) { sb.AppendLine("Command completed with no output."); }
                         _lastUpdateTime = DateTime.Now;
                         success = true;
                     }
                     output += sb.ToString();
                 }
             }
-            catch (Exception ex)
-            {
-                output += $"\nEXCEPTION: {ex.Message}";
-            }
+            catch (Exception ex) { output += $"\nEXCEPTION: {ex.Message}"; }
 
             await Dispatcher.InvokeAsync(() =>
             {
                 UpdateOutputText += output;
                 LastUpdateCheckString = _lastUpdateTime.HasValue ? _lastUpdateTime.Value.ToString("g") : "Never";
-                if (success && !isScheduled)
-                {
-                    SetStatus("Update complete.");
-                }
-                else if (!success)
-                {
-                    SetStatus("Update failed.");
-                }
+                if (success && !isScheduled) { SetStatus("Update complete."); }
+                else if (!success) { SetStatus("Update failed."); }
             });
 
             return success;
@@ -412,16 +350,51 @@ namespace Guifender
             SetStatus("Refreshing status...", clearAfter: false);
             try
             {
-                ComputerStatusGrid.RowDefinitions.Clear();
-                ComputerStatusGrid.Children.Clear();
+                await Dispatcher.InvokeAsync(() => StatusPanel.Children.Clear());
                 await GetComputerStatus();
                 GetServicesStatus();
+                await CheckForNewVersionAsync();
                 SetStatus("Status refreshed.");
+            }
+            catch (Exception ex) { SetStatus("Failed to refresh status."); Debug.WriteLine($"Error during InitializeDataAsync: {ex.Message}"); }
+        }
+
+        private async Task CheckForNewVersionAsync()
+        {
+            SetStatus("Checking for new version...", clearAfter: false);
+            try
+            {
+                string localCommitHash = RunGitCommand("rev-parse HEAD").Trim();
+
+                using (var client = new HttpClient())
+                {
+                    client.DefaultRequestHeaders.Add("User-Agent", "Guifender-App");
+                    string url = "https://api.github.com/repos/jplozf/Guifender/commits/main";
+                    string json = await client.GetStringAsync(url);
+                    JObject latestCommit = JObject.Parse(json);
+                    string remoteCommitHash = latestCommit["sha"].ToString();
+
+                    if (!string.IsNullOrEmpty(localCommitHash) && !localCommitHash.Equals(remoteCommitHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var hyperlink = new Hyperlink(new Run("A new version is available! Click here to download."));
+                        hyperlink.NavigateUri = new Uri("https://github.com/jplozf/Guifender/releases");
+                        hyperlink.RequestNavigate += Hyperlink_RequestNavigate;
+                        VersionCheckTextBlock.Inlines.Clear();
+                        VersionCheckTextBlock.Inlines.Add(hyperlink);
+                        SetStatus("New version available!");
+                    }
+                    else
+                    {
+                        VersionCheckTextBlock.Text = "You are using the latest version.";
+                        SetStatus("Ready");
+                    }
+                }
             }
             catch (Exception ex)
             {
-                SetStatus("Failed to refresh status.");
-                Debug.WriteLine($"Error during InitializeDataAsync: {ex.Message}");
+                Debug.WriteLine($"Version check failed: {ex.Message}");
+                VersionCheckTextBlock.Text = "Version check failed.";
+                SetStatus("Version check failed.");
             }
         }
 
@@ -429,122 +402,74 @@ namespace Guifender
         {
             try
             {
-                using (PowerShell PowerShellInstance = PowerShell.Create())
+                using (PowerShell ps = PowerShell.Create())
                 {
-                    PowerShellInstance.AddScript("Get-MpComputerStatus | Select-Object AntivirusSignatureLastUpdated, AntivirusSignatureVersion, AMEngineVersion, AMProductVersion, AMRunningMode, AMServiceEnabled, AMServiceVersion, AntispywareSignatureVersion, AntispywareEnabled, AntispywareSignatureLastUpdated, RealTimeProtectionEnabled, RebootRequired");
-                    var psOutput = await Task.Factory.FromAsync(PowerShellInstance.BeginInvoke(), PowerShellInstance.EndInvoke);
+                    ps.AddScript("Get-MpComputerStatus");
+                    var psOutput = await Task.Factory.FromAsync(ps.BeginInvoke(), ps.EndInvoke);
+                    if (ps.Streams.Error.Count > 0) { /* Handle errors */ return; }
 
-                    if (PowerShellInstance.Streams.Error.Count > 0)
+                    if (psOutput != null && psOutput.Count > 0)
                     {
-                        var errors = new StringBuilder();
-                        foreach (var error in PowerShellInstance.Streams.Error)
+                        var status = psOutput[0];
+                        await Dispatcher.InvokeAsync(() =>
                         {
-                            errors.AppendLine(error.ToString());
-                        }
-                        Debug.WriteLine($"PowerShell Errors in GetComputerStatus: {errors.ToString()}");
+                            AntivirusSignatureLastUpdated = Convert.ToDateTime(status.Properties["AntivirusSignatureLastUpdated"].Value).ToString("g");
+                            AntivirusSignatureVersion = status.Properties["AntivirusSignatureVersion"].Value.ToString();
+
+                            var generalStatus = new Dictionary<string, object> { { "RealTimeProtectionEnabled", status.Properties["RealTimeProtectionEnabled"].Value }, { "RebootRequired", status.Properties["RebootRequired"].Value }, { "AMServiceEnabled", status.Properties["AMServiceEnabled"].Value }, { "AMRunningMode", status.Properties["AMRunningMode"].Value } };
+                            StatusPanel.Children.Add(CreateStatusGroupBox("General Status", generalStatus));
+
+                            var antivirusStatus = new Dictionary<string, object> { { "AntivirusEnabled", status.Properties["AntivirusEnabled"].Value }, { "AntivirusSignatureVersion", status.Properties["AntivirusSignatureVersion"].Value }, { "AntivirusSignatureLastUpdated", status.Properties["AntivirusSignatureLastUpdated"].Value } };
+                            StatusPanel.Children.Add(CreateStatusGroupBox("Antivirus Status", antivirusStatus));
+
+                            var antispywareStatus = new Dictionary<string, object> { { "AntispywareEnabled", status.Properties["AntispywareEnabled"].Value }, { "AntispywareSignatureVersion", status.Properties["AntispywareSignatureVersion"].Value }, { "AntispywareSignatureLastUpdated", status.Properties["AntispywareSignatureLastUpdated"].Value } };
+                            StatusPanel.Children.Add(CreateStatusGroupBox("Antispyware Status", antispywareStatus));
+
+                            var productInfo = new Dictionary<string, object> { { "AMEngineVersion", status.Properties["AMEngineVersion"].Value }, { "AMProductVersion", status.Properties["AMProductVersion"].Value }, { "AMServiceVersion", status.Properties["AMServiceVersion"].Value } };
+                            StatusPanel.Children.Add(CreateStatusGroupBox("Product Information", productInfo));
+                        });
                     }
-
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        if (psOutput != null && psOutput.Count > 0)
-                        {
-                            var status = psOutput[0];
-
-                            var lastUpdatedProp = status.Properties["AntivirusSignatureLastUpdated"];
-                            if (lastUpdatedProp != null && lastUpdatedProp.Value != null)
-                            {
-                                AntivirusSignatureLastUpdated = Convert.ToDateTime(lastUpdatedProp.Value).ToString("g");
-                            }
-
-                            var versionProp = status.Properties["AntivirusSignatureVersion"];
-                            if (versionProp != null && versionProp.Value != null)
-                            {
-                                AntivirusSignatureVersion = versionProp.Value.ToString();
-                            }
-
-                            int row = ComputerStatusGrid.RowDefinitions.Count;
-                            foreach (var prop in status.Properties)
-                            {
-                                ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                                var label = new TextBlock { Text = prop.Name + ":", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 2, 5, 2) };
-                                Grid.SetRow(label, row);
-                                Grid.SetColumn(label, 0);
-                                ComputerStatusGrid.Children.Add(label);
-
-                                var value = new TextBlock { Text = prop.Value?.ToString() ?? "N/A", Margin = new Thickness(0, 2, 0, 2) };
-                                Grid.SetRow(value, row);
-                                Grid.SetColumn(value, 1);
-                                ComputerStatusGrid.Children.Add(value);
-                                row++;
-                            }
-                        }
-                    });
                 }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Exception in GetComputerStatus(): {ex.Message}");
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    var errorText = new TextBlock { Text = $"Error: {ex.Message}", Foreground = System.Windows.Media.Brushes.Red };
-                    Grid.SetColumnSpan(errorText, 2);
-                    ComputerStatusGrid.Children.Add(errorText);
-                });
-            }
+            catch (Exception ex) { Debug.WriteLine($"Exception in GetComputerStatus(): {ex.Message}"); }
         }
 
         private void GetServicesStatus()
         {
-            StringBuilder sb = new StringBuilder();
-            try
+            var services = new Dictionary<string, object>();
+            string[] serviceNames = { "MDCoreSvc", "mpssvc", "Sense", "WdNisSvc", "WinDefend" };
+            foreach (string serviceName in serviceNames)
             {
-                string[] services = { "MDCoreSvc", "mpssvc", "Sense", "WdNisSvc", "WinDefend" };
-                foreach (string serviceName in services)
-                {
-                    var (displayName, status) = GetServiceStatus(serviceName);
-                    sb.AppendLine($"Service ‘{displayName}’ status: {status}");
-                }
+                var (displayName, status) = GetServiceStatus(serviceName);
+                services.Add(displayName, status);
             }
-            catch (Exception ex)
+            Dispatcher.Invoke(() => StatusPanel.Children.Add(CreateStatusGroupBox("Defender Services", services)));
+        }
+
+        private System.Windows.Controls.GroupBox CreateStatusGroupBox(string header, Dictionary<string, object> properties)
+        {
+            var groupBox = new System.Windows.Controls.GroupBox { Header = header, Margin = new Thickness(0, 0, 0, 5) };
+            var grid = new Grid { Margin = new Thickness(5) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            int row = 0;
+            foreach (var prop in properties)
             {
-                sb.AppendLine(ex.Message);
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                var label = new TextBlock { Text = prop.Key + ":", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 2, 5, 2) };
+                Grid.SetRow(label, row); Grid.SetColumn(label, 0); grid.Children.Add(label);
+
+                var value = new TextBlock { Text = prop.Value?.ToString() ?? "N/A", Margin = new Thickness(0, 2, 0, 2) };
+                if (prop.Value is bool) { value.Foreground = (bool)prop.Value ? System.Windows.Media.Brushes.Green : System.Windows.Media.Brushes.Red; }
+                else if (prop.Value is string && ((string)prop.Value).Equals("Running", StringComparison.OrdinalIgnoreCase)) { value.Foreground = System.Windows.Media.Brushes.Green; }
+                else if (prop.Value is string && ((string)prop.Value).Equals("Stopped", StringComparison.OrdinalIgnoreCase)) { value.Foreground = System.Windows.Media.Brushes.Red; }
+
+                Grid.SetRow(value, row); Grid.SetColumn(value, 1); grid.Children.Add(value);
+                row++;
             }
-
-            Dispatcher.Invoke(() =>
-            {
-                ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                var headerLabel = new TextBlock { Text = "Defender Services:", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 10, 0, 2) };
-                Grid.SetRow(headerLabel, ComputerStatusGrid.RowDefinitions.Count - 1);
-                Grid.SetColumnSpan(headerLabel, 2);
-                ComputerStatusGrid.Children.Add(headerLabel);
-
-                foreach (var line in sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var parts = line.Split(new[] { ':' }, 2);
-                    if (parts.Length == 2)
-                    {
-                        ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-                        var label = new TextBlock { Text = parts[0].Trim() + ":", Margin = new Thickness(10, 2, 5, 2) };
-                        Grid.SetRow(label, ComputerStatusGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(label, 0);
-                        ComputerStatusGrid.Children.Add(label);
-
-                        var value = new TextBlock { Text = parts[1].Trim(), Margin = new Thickness(0, 2, 0, 2) };
-                        if (parts[1].Trim().Equals("Running", StringComparison.OrdinalIgnoreCase))
-                        {
-                            value.Foreground = System.Windows.Media.Brushes.Green;
-                        }
-                        else
-                        {
-                            value.Foreground = System.Windows.Media.Brushes.Red;
-                        }
-                        Grid.SetRow(value, ComputerStatusGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(value, 1);
-                        ComputerStatusGrid.Children.Add(value);
-                    }
-                }
-            });
+            groupBox.Content = grid;
+            return groupBox;
         }
         #endregion
 
@@ -552,39 +477,24 @@ namespace Guifender
         protected override void OnClosing(CancelEventArgs e)
         {
             if (_isExiting) return;
-
-            if (MinimizeToTrayOnClose)
-            {
-                SaveSettings();
-                e.Cancel = true;
-                Hide();
-            }
-            else
-            {
-                e.Cancel = true;
-                RequestExit();
-            }
+            if (MinimizeToTrayOnClose) { SaveSettings(); e.Cancel = true; Hide(); }
+            else { e.Cancel = true; RequestExit(); }
         }
 
-        protected override void OnClosed(EventArgs e)
-        {
-            _notifyIcon.Dispose();
-            base.OnClosed(e);
-        }
+        protected override void OnClosed(EventArgs e) { _notifyIcon.Dispose(); base.OnClosed(e); }
         #endregion
 
         #region Helpers
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            e.Handled = true;
+        }
+
         static protected (string, string) GetServiceStatus(String serviceName)
         {
-            try
-            {
-                ServiceController sc = new ServiceController(serviceName);
-                return (sc.DisplayName.ToString(), sc.Status.ToString());
-            }
-            catch (Exception)
-            {
-                return ("Not found", "Unknown");
-            }
+            try { ServiceController sc = new ServiceController(serviceName); return (sc.DisplayName.ToString(), sc.Status.ToString()); } 
+            catch (Exception) { return ("Not found", "Unknown"); }
         }
         #endregion
     }
