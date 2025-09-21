@@ -19,6 +19,7 @@
     <AssemblyVersion>0.$(CommitCount).0.0</AssemblyVersion>
     <FileVersion>0.$(CommitCount).0.0</FileVersion>
     <InformationalVersion>0.$(CommitCount)-$(CommitHash)</InformationalVersion>
+    <ApplicationIcon>app_icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <Target Name="GenerateVersionInfo" BeforeTargets="CoreCompile">
@@ -54,6 +55,10 @@
 
   <ItemGroup>
     <None Remove="app_icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="app_icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
