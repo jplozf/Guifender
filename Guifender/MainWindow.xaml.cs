@@ -25,9 +25,13 @@ namespace Guifender
         public string SelectedUpdateSource { get; set; } = "MicrosoftUpdateServer";
         public int ThrottleLimit { get; set; } = 0;
         public bool AsJob { get; set; } = false;
+        public bool IsScheduledUpdateEnabled { get; set; } = false;
+        public int ScheduledUpdateIntervalHours { get; set; } = 24;
+        public DateTime? LastUpdateTime { get; set; } = null;
+
         public double WindowTop { get; set; } = 100;
         public double WindowLeft { get; set; } = 100;
-        public double WindowHeight { get; set; } = 500;
+        public double WindowHeight { get; set; } = 600;
         public double WindowWidth { get; set; } = 850;
         public WindowState WindowState { get; set; } = WindowState.Normal;
         public int SelectedTabIndex { get; set; } = 0;
@@ -41,91 +45,64 @@ namespace Guifender
         private readonly string _settingsFilePath;
         private CancellationTokenSource _statusClearTokenSource = new CancellationTokenSource();
         private bool _isExiting = false;
+        private DateTime? _lastUpdateTime;
+        private System.Threading.Timer _updateSchedulerTimer;
 
         #region Properties
-        private string _statusText;
-        public string StatusText
+        private string _statusText; public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
+        private bool _confirmOnExit; public bool ConfirmOnExit { get => _confirmOnExit; set { _confirmOnExit = value; OnPropertyChanged(); } }
+        private bool _minimizeToTrayOnClose; public bool MinimizeToTrayOnClose { get => _minimizeToTrayOnClose; set { _minimizeToTrayOnClose = value; OnPropertyChanged(); } }
+        private List<string> _updateSources; public List<string> UpdateSources { get => _updateSources; set { _updateSources = value; OnPropertyChanged(); } }
+        private string _selectedUpdateSource; public string SelectedUpdateSource { get => _selectedUpdateSource; set { _selectedUpdateSource = value; OnPropertyChanged(); } }
+        private int _throttleLimit; public int ThrottleLimit { get => _throttleLimit; set { _throttleLimit = value; OnPropertyChanged(); } }
+        private bool _asJob; public bool AsJob { get => _asJob; set { _asJob = value; OnPropertyChanged(); } }
+        private string _updateOutputText; public string UpdateOutputText { get => _updateOutputText; set { _updateOutputText = value; OnPropertyChanged(); } }
+        private string _antivirusSignatureVersion; public string AntivirusSignatureVersion { get => _antivirusSignatureVersion; set { _antivirusSignatureVersion = value; OnPropertyChanged(); } }
+        private string _antivirusSignatureLastUpdated; public string AntivirusSignatureLastUpdated { get => _antivirusSignatureLastUpdated; set { _antivirusSignatureLastUpdated = value; OnPropertyChanged(); } }
+        private string _lastUpdateCheckString; public string LastUpdateCheckString { get => _lastUpdateCheckString; set { _lastUpdateCheckString = value; OnPropertyChanged(); } }
+
+        private bool _isScheduledUpdateEnabled;
+        public bool IsScheduledUpdateEnabled
         {
-            get => _statusText;
-            set { _statusText = value; OnPropertyChanged(); }
+            get => _isScheduledUpdateEnabled;
+            set { _isScheduledUpdateEnabled = value; OnPropertyChanged(); SetupUpdateScheduler(); }
         }
 
-        private bool _confirmOnExit;
-        public bool ConfirmOnExit
+        private int _scheduledUpdateIntervalHours;
+        public int ScheduledUpdateIntervalHours
         {
-            get => _confirmOnExit;
-            set { _confirmOnExit = value; OnPropertyChanged(); }
+            get => _scheduledUpdateIntervalHours;
+            set { _scheduledUpdateIntervalHours = value; OnPropertyChanged(); SetupUpdateScheduler(); }
         }
 
-        private bool _minimizeToTrayOnClose;
-        public bool MinimizeToTrayOnClose
+        private string _nextScheduledUpdateString;
+        public string NextScheduledUpdateString
         {
-            get => _minimizeToTrayOnClose;
-            set { _minimizeToTrayOnClose = value; OnPropertyChanged(); }
-        }
-
-        private List<string> _updateSources;
-        public List<string> UpdateSources
-        {
-            get => _updateSources;
-            set { _updateSources = value; OnPropertyChanged(); }
-        }
-
-        private string _selectedUpdateSource;
-        public string SelectedUpdateSource
-        {
-            get => _selectedUpdateSource;
-            set { _selectedUpdateSource = value; OnPropertyChanged(); }
-        }
-
-        private int _throttleLimit;
-        public int ThrottleLimit
-        {
-            get => _throttleLimit;
-            set { _throttleLimit = value; OnPropertyChanged(); }
-        }
-
-        private bool _asJob;
-        public bool AsJob
-        {
-            get => _asJob;
-            set { _asJob = value; OnPropertyChanged(); }
-        }
-
-        private string _updateOutputText;
-        public string UpdateOutputText
-        {
-            get => _updateOutputText;
-            set { _updateOutputText = value; OnPropertyChanged(); }
+            get => _nextScheduledUpdateString;
+            set { _nextScheduledUpdateString = value; OnPropertyChanged(); }
         }
         #endregion
 
         public event PropertyChangedEventHandler PropertyChanged;
-
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+        protected void OnPropertyChanged([CallerMemberName] string name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         public MainWindow()
         {
             InitializeComponent();
             UpdateSources = new List<string> { "MicrosoftUpdateServer", "InternalDefinitionUpdateServer", "MMPC" };
-
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string settingsDir = Path.Combine(appDataPath, "Guifender");
             Directory.CreateDirectory(settingsDir);
             _settingsFilePath = Path.Combine(settingsDir, "settings.json");
-
             LoadSettings();
-
             this.Title = $"Guifender {MajorVersion}.{VersionInfo.CommitCount}-{VersionInfo.CommitHash}";
             SetupTaskbarIcon();
             SetStatus("Ready", clearAfter: false);
-
             _ = InitializeDataAsync();
+            SetupUpdateScheduler();
         }
 
+        #region Core App Logic
         private void SetupTaskbarIcon()
         {
             var resourceInfo = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/app_icon.png"));
@@ -192,7 +169,6 @@ namespace Guifender
             System.Windows.Application.Current.Shutdown();
         }
 
-        #region Settings and Status
         private async void SetStatus(string message, bool clearAfter = true)
         {
             StatusText = message;
@@ -218,8 +194,7 @@ namespace Guifender
             {
                 if (File.Exists(_settingsFilePath))
                 {
-                    string json = File.ReadAllText(_settingsFilePath);
-                    _settings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
+                    _settings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(_settingsFilePath)) ?? new AppSettings();
                 }
                 else
                 {
@@ -237,6 +212,10 @@ namespace Guifender
             SelectedUpdateSource = _settings.SelectedUpdateSource;
             ThrottleLimit = _settings.ThrottleLimit;
             AsJob = _settings.AsJob;
+            IsScheduledUpdateEnabled = _settings.IsScheduledUpdateEnabled;
+            ScheduledUpdateIntervalHours = _settings.ScheduledUpdateIntervalHours;
+            _lastUpdateTime = _settings.LastUpdateTime;
+            LastUpdateCheckString = _lastUpdateTime.HasValue ? _lastUpdateTime.Value.ToString("g") : "Never";
 
             this.Top = _settings.WindowTop;
             this.Left = _settings.WindowLeft;
@@ -261,16 +240,17 @@ namespace Guifender
                 _settings.SelectedUpdateSource = this.SelectedUpdateSource;
                 _settings.ThrottleLimit = this.ThrottleLimit;
                 _settings.AsJob = this.AsJob;
+                _settings.IsScheduledUpdateEnabled = this.IsScheduledUpdateEnabled;
+                _settings.ScheduledUpdateIntervalHours = this.ScheduledUpdateIntervalHours;
+                _settings.LastUpdateTime = this._lastUpdateTime;
                 _settings.SelectedTabIndex = MainTabControl.SelectedIndex;
-
                 _settings.WindowState = this.WindowState == WindowState.Minimized ? WindowState.Normal : this.WindowState;
                 _settings.WindowTop = this.RestoreBounds.Top;
                 _settings.WindowLeft = this.RestoreBounds.Left;
                 _settings.WindowHeight = this.RestoreBounds.Height;
                 _settings.WindowWidth = this.RestoreBounds.Width;
 
-                string json = JsonConvert.SerializeObject(_settings, Formatting.Indented);
-                File.WriteAllText(_settingsFilePath, json);
+                File.WriteAllText(_settingsFilePath, JsonConvert.SerializeObject(_settings, Formatting.Indented));
             }
             catch (Exception ex)
             {
@@ -299,18 +279,73 @@ namespace Guifender
         }
         #endregion
 
-        #region PowerShell Logic
+        #region Update and Scheduling Logic
+        private void SetupUpdateScheduler()
+        {
+            _updateSchedulerTimer?.Dispose();
+
+            if (!IsScheduledUpdateEnabled || ScheduledUpdateIntervalHours <= 0)
+            {
+                NextScheduledUpdateString = "Disabled";
+                return;
+            }
+
+            var interval = TimeSpan.FromHours(ScheduledUpdateIntervalHours);
+            DateTime lastRun = _lastUpdateTime ?? DateTime.MinValue;
+            DateTime nextRun = lastRun.Add(interval);
+
+            TimeSpan dueTime;
+            if (nextRun < DateTime.Now)
+            {
+                dueTime = TimeSpan.Zero; // Time has passed, run immediately
+            }
+            else
+            {
+                dueTime = nextRun - DateTime.Now;
+            }
+
+            NextScheduledUpdateString = DateTime.Now.Add(dueTime).ToString("g");
+            _updateSchedulerTimer = new System.Threading.Timer(ScheduledUpdateTimer_Callback, null, dueTime, interval);
+        }
+
+        private async void ScheduledUpdateTimer_Callback(object state)
+        {
+            await Dispatcher.InvokeAsync(() => SetStatus("Running scheduled update...", clearAfter: false));
+            bool success = await PerformUpdateAsync(isScheduled: true);
+            await Dispatcher.InvokeAsync(() =>
+            {
+                SetStatus(success ? "Scheduled update complete." : "Scheduled update failed.");
+                SetupUpdateScheduler(); // Recalculate next run time
+            });
+        }
+
         private async void RunUpdate_Click(object sender, RoutedEventArgs e)
         {
-            SetStatus("Updating signatures...", clearAfter: false);
-            UpdateOutputText = "Starting update...";
+            await PerformUpdateAsync(isScheduled: false);
+            await InitializeDataAsync();
+        }
+
+        private async Task<bool> PerformUpdateAsync(bool isScheduled)
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (!isScheduled)
+                {
+                    UpdateOutputText = "";
+                }
+                SetStatus("Updating signatures...", clearAfter: false);
+            });
+
             var command = new StringBuilder("Update-MpSignature");
+            if (!isScheduled)
+            {
+                if (!string.IsNullOrEmpty(SelectedUpdateSource)) { command.Append($" -UpdateSource {SelectedUpdateSource}"); }
+                if (ThrottleLimit > 0 && ThrottleLimit <= 100) { command.Append($" -ThrottleLimit {ThrottleLimit}"); }
+                if (AsJob) { command.Append(" -AsJob"); }
+            }
 
-            if (!string.IsNullOrEmpty(SelectedUpdateSource)) { command.Append($" -UpdateSource {SelectedUpdateSource}"); }
-            if (ThrottleLimit > 0 && ThrottleLimit <= 100) { command.Append($" -ThrottleLimit {ThrottleLimit}"); }
-            if (AsJob) { command.Append(" -AsJob"); }
-
-            UpdateOutputText = $"Running command: {command.ToString()}\n\n";
+            string output = $"Update started at {DateTime.Now:g}...\nRunning command: {command.ToString()}\n\n";
+            bool success = false;
 
             try
             {
@@ -321,28 +356,57 @@ namespace Guifender
                     StringBuilder sb = new StringBuilder();
                     if (ps.Streams.Error.Count > 0)
                     {
-                        foreach (var error in ps.Streams.Error) { sb.AppendLine($"ERROR: {error.ToString()}"); }
-                        SetStatus("Update failed.");
+                        foreach (var error in ps.Streams.Error)
+                        {
+                            sb.AppendLine($"ERROR: {error.ToString()}");
+                        }
                     }
                     else
                     {
-                        if (psOutput != null) { foreach (var item in psOutput) { if (item != null) { sb.AppendLine(item.ToString()); } } }
-                        if (sb.Length == 0) { sb.AppendLine("Command completed with no output."); }
-                        SetStatus("Update complete.");
+                        if (psOutput != null)
+                        {
+                            foreach (var item in psOutput)
+                            {
+                                if (item != null)
+                                {
+                                    sb.AppendLine(item.ToString());
+                                }
+                            }
+                        }
+                        if (sb.Length == 0)
+                        {
+                            sb.AppendLine("Command completed with no output.");
+                        }
+                        _lastUpdateTime = DateTime.Now;
+                        success = true;
                     }
-
-                    await Dispatcher.InvokeAsync(() => { UpdateOutputText += sb.ToString(); });
+                    output += sb.ToString();
                 }
             }
             catch (Exception ex)
             {
-                SetStatus("Update failed with an exception.");
-                await Dispatcher.InvokeAsync(() => { UpdateOutputText += $"\nEXCEPTION: {ex.Message}"; });
+                output += $"\nEXCEPTION: {ex.Message}";
             }
 
-            await InitializeDataAsync();
-        }
+            await Dispatcher.InvokeAsync(() =>
+            {
+                UpdateOutputText += output;
+                LastUpdateCheckString = _lastUpdateTime.HasValue ? _lastUpdateTime.Value.ToString("g") : "Never";
+                if (success && !isScheduled)
+                {
+                    SetStatus("Update complete.");
+                }
+                else if (!success)
+                {
+                    SetStatus("Update failed.");
+                }
+            });
 
+            return success;
+        }
+        #endregion
+
+        #region Status Panel Logic
         private async Task InitializeDataAsync()
         {
             SetStatus("Refreshing status...", clearAfter: false);
@@ -351,7 +415,6 @@ namespace Guifender
                 ComputerStatusGrid.RowDefinitions.Clear();
                 ComputerStatusGrid.Children.Clear();
                 await GetComputerStatus();
-                await GetAntiVirusStatus();
                 GetServicesStatus();
                 SetStatus("Status refreshed.");
             }
@@ -364,61 +427,57 @@ namespace Guifender
 
         private async Task GetComputerStatus()
         {
-            Debug.WriteLine("GetComputerStatus() started.");
             try
             {
                 using (PowerShell PowerShellInstance = PowerShell.Create())
                 {
-                    PowerShellInstance.AddScript("Set-ExecutionPolicy RemoteSigned; Import-Module ConfigDefender; Get-MpComputerStatus | Select-Object AntivirusSignatureLastUpdated, AntivirusSignatureVersion, AMEngineVersion, AMProductVersion, AMRunningMode, AMServiceEnabled, AMServiceVersion, AntispywareSignatureVersion, AntispywareEnabled, AntispywareSignatureLastUpdated, RealTimeProtectionEnabled, RebootRequired");
+                    PowerShellInstance.AddScript("Get-MpComputerStatus | Select-Object AntivirusSignatureLastUpdated, AntivirusSignatureVersion, AMEngineVersion, AMProductVersion, AMRunningMode, AMServiceEnabled, AMServiceVersion, AntispywareSignatureVersion, AntispywareEnabled, AntispywareSignatureLastUpdated, RealTimeProtectionEnabled, RebootRequired");
                     var psOutput = await Task.Factory.FromAsync(PowerShellInstance.BeginInvoke(), PowerShellInstance.EndInvoke);
-                    StringBuilder sb = new StringBuilder();
+
                     if (PowerShellInstance.Streams.Error.Count > 0)
                     {
+                        var errors = new StringBuilder();
                         foreach (var error in PowerShellInstance.Streams.Error)
                         {
-                            sb.AppendLine(error.ToString());
+                            errors.AppendLine(error.ToString());
                         }
-                        Debug.WriteLine($"PowerShell Errors: {sb.ToString()}");
+                        Debug.WriteLine($"PowerShell Errors in GetComputerStatus: {errors.ToString()}");
                     }
-                    else if (psOutput != null)
-                    {
-                        foreach (var outputItem in psOutput)
-                        {
-                            if (outputItem != null)
-                            {
-                                foreach (var prop in outputItem.Properties)
-                                {
-                                    sb.AppendLine($"{prop.Name}: {prop.Value}");
-                                }
-                            }
-                        }
-                        Debug.WriteLine($"PowerShell Output: {sb.ToString()}");
-                    }
+
                     await Dispatcher.InvokeAsync(() =>
                     {
-                        Debug.WriteLine("Dispatcher.InvokeAsync in GetComputerStatus() started.");
-                        int row = ComputerStatusGrid.RowDefinitions.Count; // Start adding from current row count
-                        foreach (var line in sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                        if (psOutput != null && psOutput.Count > 0)
                         {
-                            var parts = line.Split(new[] { ':' }, 2);
-                            if (parts.Length == 2)
+                            var status = psOutput[0];
+
+                            var lastUpdatedProp = status.Properties["AntivirusSignatureLastUpdated"];
+                            if (lastUpdatedProp != null && lastUpdatedProp.Value != null)
+                            {
+                                AntivirusSignatureLastUpdated = Convert.ToDateTime(lastUpdatedProp.Value).ToString("g");
+                            }
+
+                            var versionProp = status.Properties["AntivirusSignatureVersion"];
+                            if (versionProp != null && versionProp.Value != null)
+                            {
+                                AntivirusSignatureVersion = versionProp.Value.ToString();
+                            }
+
+                            int row = ComputerStatusGrid.RowDefinitions.Count;
+                            foreach (var prop in status.Properties)
                             {
                                 ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-                                var label = new TextBlock { Text = parts[0].Trim() + ":", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 2, 5, 2) };
+                                var label = new TextBlock { Text = prop.Name + ":", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 2, 5, 2) };
                                 Grid.SetRow(label, row);
                                 Grid.SetColumn(label, 0);
                                 ComputerStatusGrid.Children.Add(label);
 
-                                var value = new TextBlock { Text = parts[1].Trim(), Margin = new Thickness(0, 2, 0, 2) };
+                                var value = new TextBlock { Text = prop.Value?.ToString() ?? "N/A", Margin = new Thickness(0, 2, 0, 2) };
                                 Grid.SetRow(value, row);
                                 Grid.SetColumn(value, 1);
                                 ComputerStatusGrid.Children.Add(value);
-
                                 row++;
                             }
                         }
-                        Debug.WriteLine("Dispatcher.InvokeAsync in GetComputerStatus() finished.");
                     });
                 }
             }
@@ -427,86 +486,7 @@ namespace Guifender
                 Debug.WriteLine($"Exception in GetComputerStatus(): {ex.Message}");
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    var errorText = new TextBlock { Text = $"Error: {ex.Message}", Foreground = System.Windows.Media.Brushes.Red, Margin = new Thickness(0, 2, 0, 2) };
-                    Grid.SetRow(errorText, ComputerStatusGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(errorText, 0);
-                    Grid.SetColumnSpan(errorText, 2);
-                    ComputerStatusGrid.Children.Add(errorText);
-                });
-            }
-            Debug.WriteLine("GetComputerStatus() finished.");
-        }
-
-        private async Task GetAntiVirusStatus()
-        {
-            try
-            {
-                using (PowerShell PowerShellInstance = PowerShell.Create())
-                {
-                    PowerShellInstance.AddScript("Set-ExecutionPolicy RemoteSigned; Import-Module ConfigDefender; Get-MpComputerStatus | Select-Object AntivirusSignatureLastUpdated, AntivirusSignatureVersion");
-                    var psOutput = await Task.Factory.FromAsync(PowerShellInstance.BeginInvoke(), PowerShellInstance.EndInvoke);
-                    StringBuilder sb = new StringBuilder();
-                    if (PowerShellInstance.Streams.Error.Count > 0)
-                    {
-                        foreach (var error in PowerShellInstance.Streams.Error)
-                        {
-                            sb.AppendLine(error.ToString());
-                        }
-                    }
-                    else if (psOutput != null)
-                    {
-                        foreach (var outputItem in psOutput)
-                        {
-                            if (outputItem != null)
-                            {
-                                foreach (var prop in outputItem.Properties)
-                                {
-                                    sb.AppendLine($"{prop.Name}: {prop.Value}");
-                                }
-                            }
-                        }
-                    }
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                        var headerLabel = new TextBlock { Text = "Antivirus status:", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 10, 0, 2) };
-                        Grid.SetRow(headerLabel, ComputerStatusGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(headerLabel, 0);
-                        Grid.SetColumnSpan(headerLabel, 2);
-                        ComputerStatusGrid.Children.Add(headerLabel);
-                        int row = ComputerStatusGrid.RowDefinitions.Count; // Start adding from current row count
-                        foreach (var line in sb.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            var parts = line.Split(new[] { ':' }, 2);
-                            if (parts.Length == 2)
-                            {
-                                ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-                                var label = new TextBlock { Text = parts[0].Trim() + ":", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 2, 5, 2) };
-                                Grid.SetRow(label, row);
-                                Grid.SetColumn(label, 0);
-                                ComputerStatusGrid.Children.Add(label);
-
-                                var value = new TextBlock { Text = parts[1].Trim(), Margin = new Thickness(0, 2, 0, 2) };
-                                Grid.SetRow(value, row);
-                                Grid.SetColumn(value, 1);
-                                ComputerStatusGrid.Children.Add(value);
-
-                                row++;
-                            }
-                        }
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    var errorText = new TextBlock { Text = $"Error: {ex.Message}", Foreground = System.Windows.Media.Brushes.Red, Margin = new Thickness(0, 2, 0, 2) };
-                    Grid.SetRow(errorText, ComputerStatusGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(errorText, 0);
+                    var errorText = new TextBlock { Text = $"Error: {ex.Message}", Foreground = System.Windows.Media.Brushes.Red };
                     Grid.SetColumnSpan(errorText, 2);
                     ComputerStatusGrid.Children.Add(errorText);
                 });
@@ -521,9 +501,7 @@ namespace Guifender
                 string[] services = { "MDCoreSvc", "mpssvc", "Sense", "WdNisSvc", "WinDefend" };
                 foreach (string serviceName in services)
                 {
-                    string displayName;
-                    string status;
-                    (displayName, status) = GetServiceStatus(serviceName);
+                    var (displayName, status) = GetServiceStatus(serviceName);
                     sb.AppendLine($"Service ‘{displayName}’ status: {status}");
                 }
             }
@@ -537,7 +515,6 @@ namespace Guifender
                 ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 var headerLabel = new TextBlock { Text = "Defender Services:", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 10, 0, 2) };
                 Grid.SetRow(headerLabel, ComputerStatusGrid.RowDefinitions.Count - 1);
-                Grid.SetColumn(headerLabel, 0);
                 Grid.SetColumnSpan(headerLabel, 2);
                 ComputerStatusGrid.Children.Add(headerLabel);
 
@@ -546,19 +523,15 @@ namespace Guifender
                     var parts = line.Split(new[] { ':' }, 2);
                     if (parts.Length == 2)
                     {
-                        string serviceName = parts[0].Trim();
-                        string statusText = parts[1].Trim();
-
                         ComputerStatusGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-                        var label = new TextBlock { Text = serviceName + ":", FontWeight = FontWeights.Normal, Margin = new Thickness(10, 2, 5, 2) };
+                        var label = new TextBlock { Text = parts[0].Trim() + ":", Margin = new Thickness(10, 2, 5, 2) };
                         Grid.SetRow(label, ComputerStatusGrid.RowDefinitions.Count - 1);
                         Grid.SetColumn(label, 0);
                         ComputerStatusGrid.Children.Add(label);
 
-                        var value = new TextBlock { Text = statusText, Margin = new Thickness(0, 2, 0, 2) };
-
-                        if (statusText.Equals("Running", StringComparison.OrdinalIgnoreCase))
+                        var value = new TextBlock { Text = parts[1].Trim(), Margin = new Thickness(0, 2, 0, 2) };
+                        if (parts[1].Trim().Equals("Running", StringComparison.OrdinalIgnoreCase))
                         {
                             value.Foreground = System.Windows.Media.Brushes.Green;
                         }
@@ -566,7 +539,6 @@ namespace Guifender
                         {
                             value.Foreground = System.Windows.Media.Brushes.Red;
                         }
-
                         Grid.SetRow(value, ComputerStatusGrid.RowDefinitions.Count - 1);
                         Grid.SetColumn(value, 1);
                         ComputerStatusGrid.Children.Add(value);
@@ -579,7 +551,6 @@ namespace Guifender
         #region Window Events
         protected override void OnClosing(CancelEventArgs e)
         {
-            // If shutdown is already in progress, do nothing more.
             if (_isExiting) return;
 
             if (MinimizeToTrayOnClose)
@@ -590,8 +561,6 @@ namespace Guifender
             }
             else
             {
-                // Cancel this event and let RequestExit handle the shutdown process,
-                // including the confirmation prompt.
                 e.Cancel = true;
                 RequestExit();
             }

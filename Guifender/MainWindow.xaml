@@ -34,6 +34,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
@@ -41,17 +42,72 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="Update Source:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding UpdateSources}" SelectedItem="{Binding SelectedUpdateSource}" Margin="0,5"/>
+                    <GroupBox Header="Current Signature" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                        <Grid Margin="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Version:" FontWeight="Bold" Margin="0,0,5,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding AntivirusSignatureVersion}"/>
+                            <TextBlock Grid.Row="1" Text="Last Updated:" FontWeight="Bold" Margin="0,5,5,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AntivirusSignatureLastUpdated}" Margin="0,5,0,0"/>
+                            <TextBlock Grid.Row="2" Text="Last Update Check:" FontWeight="Bold" Margin="0,5,5,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastUpdateCheckString}" Margin="0,5,0,0"/>
+                        </Grid>
+                    </GroupBox>
 
-                    <TextBlock Grid.Row="1" Text="Throttle Limit (%):" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ThrottleLimit, Mode=TwoWay}" Margin="0,5"/>
+                    <GroupBox Header="Manual Update" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                        <Grid Margin="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                    <CheckBox Grid.Row="2" Grid.ColumnSpan="2" IsChecked="{Binding AsJob, Mode=TwoWay}" Content="Run as a background job" Margin="0,5"/>
+                            <TextBlock Text="Update Source:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding UpdateSources}" SelectedItem="{Binding SelectedUpdateSource}" Margin="0,5"/>
 
-                    <Button Grid.Row="3" Grid.ColumnSpan="2" Content="Run Update" Click="RunUpdate_Click" Margin="0,10"/>
+                            <TextBlock Grid.Row="1" Text="Throttle Limit (%):" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ThrottleLimit, Mode=TwoWay}" Margin="0,5"/>
 
-                    <ScrollViewer Grid.Row="4" Grid.ColumnSpan="2" Margin="0,5">
+                            <CheckBox Grid.Row="2" Grid.ColumnSpan="2" IsChecked="{Binding AsJob, Mode=TwoWay}" Content="Run as a background job" Margin="0,5"/>
+
+                            <Button Grid.Row="3" Grid.ColumnSpan="2" Content="Run Update" Click="RunUpdate_Click" Margin="0,10,0,0"/>
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="Scheduled Update" Grid.Row="2" Grid.ColumnSpan="2">
+                        <Grid Margin="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <CheckBox IsChecked="{Binding IsScheduledUpdateEnabled, Mode=TwoWay}" Content="Enable scheduled updates"/>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                                <TextBlock Text="Update every" VerticalAlignment="Center"/>
+                                <TextBox Text="{Binding ScheduledUpdateIntervalHours, Mode=TwoWay}" Width="40" Margin="5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="hours" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
+                                <TextBlock Text="Next scheduled update:" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding NextScheduledUpdateString}" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+
+                    <ScrollViewer Grid.Row="5" Grid.ColumnSpan="2" Margin="0,10,0,0">
                         <TextBlock Text="{Binding UpdateOutputText}" TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Grid>
