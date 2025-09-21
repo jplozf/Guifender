@@ -1,7 +1,6 @@
 # Guifender
 
 A GUI for Microsoft Defender on Windows.
-Following is a roadmap for the project...
 
 ## Features
 - View and manage threats detected by Microsoft Defender.
@@ -13,7 +12,7 @@ Following is a roadmap for the project...
 - Detailed threat reports.
 
 ## Installation
-1. Download the latest release from the [GitHub Releases](https://github.com/jplozf/Guuifender/releases).
+1. Download the latest release from the [GitHub Releases](https://github.com/jplozf/Guifender/releases).
 1. Run the installer and follow the on-screen instructions.
 1. Launch Guifender from the Start Menu.
 1. Enjoy enhanced control over your Microsoft Defender settings!

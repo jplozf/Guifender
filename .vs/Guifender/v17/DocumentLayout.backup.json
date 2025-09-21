@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|c:\\users\\jplig\\projets\\cs.net\\guifender\\guifender\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|solutionrelative:guifender\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|c:\\users\\jplig\\projets\\cs.net\\guifender\\guifender\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|solutionrelative:guifender\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|c:\\users\\jplig\\projets\\cs.net\\guifender\\guifender\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|solutionrelative:guifender\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{ABC41296-534C-46BA-8A90-FE7B2074BA1F}|Guifender\\Guifender.csproj|c:\\users\\jplig\\projets\\cs.net\\guifender\\guifender\\guifender.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
@@ -22,30 +22,29 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "App.xaml.cs",
               "DocumentMoniker": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\App.xaml.cs",
               "RelativeDocumentMoniker": "Guifender\\App.xaml.cs",
               "ToolTip": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\App.xaml.cs",
               "RelativeToolTip": "Guifender\\App.xaml.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T17:58:19.657Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T17:58:19.657Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Guifender\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\jplig\\Projets\\cs.net\\Guifender\\Guifender\\MainWindow.xaml.cs",
               "RelativeToolTip": "Guifender\\MainWindow.xaml.cs",
-              "ViewState": "AgIAAEYAAAAAAAAAAADwvxgBAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAGgAAAAAAAAAAAAwwE0BAAA3AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-14T07:21:11.953Z",
               "EditorCaption": ""
@@ -61,6 +60,10 @@
               "ViewState": "AgIAABUAAAAAAAAAAAAAAEQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
               "WhenOpened": "2025-09-14T06:50:39.694Z"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             }
           ]
         }

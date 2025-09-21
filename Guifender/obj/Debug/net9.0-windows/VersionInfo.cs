@@ -4,7 +4,7 @@ namespace Guifender
 { 
     public static class VersionInfo 
     { 
-        public const string CommitCount = "5"; 
-        public const string CommitHash = "6313a8e"; 
+        public const string CommitCount = "7"; 
+        public const string CommitHash = "13deb61"; 
     } 
 } 
