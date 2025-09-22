@@ -101,6 +101,7 @@ namespace Guifender
         public MainWindow()
         {
             InitializeComponent();
+            Logger.ArchiveLogFileIfNeeded();
             SetStatus("Guifender starting...", clearAfter: false);
             UpdateSources = new List<string> { "MicrosoftUpdateServer", "InternalDefinitionUpdateServer", "MMPC" };
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
