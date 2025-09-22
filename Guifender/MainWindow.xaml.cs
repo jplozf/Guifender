@@ -32,6 +32,7 @@ namespace Guifender
         public bool IsScheduledUpdateEnabled { get; set; } = false;
         public int ScheduledUpdateIntervalHours { get; set; } = 24;
         public DateTime? LastUpdateTime { get; set; } = null;
+        public int StatusClearDelaySeconds { get; set; } = 5;
 
         public double WindowTop { get; set; } = 100;
         public double WindowLeft { get; set; } = 100;
@@ -85,6 +86,13 @@ namespace Guifender
             get => _nextScheduledUpdateString;
             set { _nextScheduledUpdateString = value; OnPropertyChanged(); }
         }
+
+        private int _statusClearDelaySeconds; 
+        public int StatusClearDelaySeconds
+        {
+            get => _statusClearDelaySeconds;
+            set { _statusClearDelaySeconds = value; OnPropertyChanged(); }
+        }
         #endregion
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -93,6 +101,7 @@ namespace Guifender
         public MainWindow()
         {
             InitializeComponent();
+            SetStatus("Guifender starting...", clearAfter: false);
             UpdateSources = new List<string> { "MicrosoftUpdateServer", "InternalDefinitionUpdateServer", "MMPC" };
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string settingsDir = Path.Combine(appDataPath, "Guifender");
@@ -187,6 +196,7 @@ namespace Guifender
             }
             _isExiting = true;
             SetStatus("Exiting...", clearAfter: false);
+            Logger.Write("Guifender exiting.");
             SaveSettings();
             System.Windows.Application.Current.Shutdown();
         }
@@ -194,13 +204,20 @@ namespace Guifender
         private async void SetStatus(string message, bool clearAfter = true)
         {
             StatusText = message;
-            if (clearAfter)
+            Logger.Write(message);
+
+            if (clearAfter && StatusClearDelaySeconds > 0)
             {
                 _statusClearTokenSource.Cancel();
                 _statusClearTokenSource = new CancellationTokenSource();
                 var token = _statusClearTokenSource.Token;
-                await Task.Delay(5000);
-                if (!token.IsCancellationRequested) { StatusText = "Ready"; }
+
+                await Task.Delay(StatusClearDelaySeconds * 1000);
+
+                if (!token.IsCancellationRequested)
+                {
+                    StatusText = "Ready";
+                }
             }
         }
 
@@ -222,6 +239,7 @@ namespace Guifender
             ScheduledUpdateIntervalHours = _settings.ScheduledUpdateIntervalHours;
             _lastUpdateTime = _settings.LastUpdateTime;
             LastUpdateCheckString = _lastUpdateTime.HasValue ? _lastUpdateTime.Value.ToString("g") : "Never";
+            StatusClearDelaySeconds = _settings.StatusClearDelaySeconds;
 
             this.Top = _settings.WindowTop; this.Left = _settings.WindowLeft; this.Height = _settings.WindowHeight; this.Width = _settings.WindowWidth; this.WindowState = _settings.WindowState;
             ValidatePosition();
@@ -240,6 +258,7 @@ namespace Guifender
                 _settings.IsScheduledUpdateEnabled = this.IsScheduledUpdateEnabled;
                 _settings.ScheduledUpdateIntervalHours = this.ScheduledUpdateIntervalHours;
                 _settings.LastUpdateTime = this._lastUpdateTime;
+                _settings.StatusClearDelaySeconds = this.StatusClearDelaySeconds;
                 _settings.SelectedTabIndex = MainTabControl.SelectedIndex;
                 _settings.WindowState = this.WindowState == WindowState.Minimized ? WindowState.Normal : this.WindowState;
                 _settings.WindowTop = this.RestoreBounds.Top; _settings.WindowLeft = this.RestoreBounds.Left; _settings.WindowHeight = this.RestoreBounds.Height; _settings.WindowWidth = this.RestoreBounds.Width;

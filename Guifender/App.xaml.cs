@@ -19,65 +19,17 @@ public partial class App : System.Windows.Application
     private const string AppName = "GuifenderSingleton";
     private static Mutex _mutex = null;
 
-    protected override async void OnStartup(StartupEventArgs e)
-    {
-        _mutex = new Mutex(true, AppName, out bool createdNew);
-
-        if (!createdNew)
+        protected override void OnStartup(StartupEventArgs e)
         {
-            // App is already running.
-            System.Windows.Application.Current.Shutdown();
-            return;
-        }
-
-        base.OnStartup(e);
-        await CheckForNewVersionAsync();
-    }
-
-    private async Task CheckForNewVersionAsync()
-    {
-        try
-        {
-            var versionAttribute = Assembly.GetExecutingAssembly()
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-            if (versionAttribute == null) return;
-
-            var versionInfo = versionAttribute.InformationalVersion;
-            var localCommit = versionInfo.Split('+').Last();
-
-            using (var client = new HttpClient())
+            _mutex = new Mutex(true, AppName, out bool createdNew);
+    
+            if (!createdNew)
             {
-                client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Guifender", "1.0"));
-                var response = await client.GetStringAsync("https://api.github.com/repos/jplozf/Guifender/branches/main");
-
-                var githubBranch = JsonConvert.DeserializeObject<GithubBranch>(response);
-                var remoteCommit = githubBranch?.Commit?.Sha;
-
-                if (remoteCommit != null && !remoteCommit.StartsWith(localCommit))
-                {
-                    System.Windows.MessageBox.Show("A new version of Guifender is available on GitHub.",
-                                    "Update Available",
-                                    MessageBoxButton.OK,
-                                    MessageBoxImage.Information);
-                }
+                // App is already running.
+                System.Windows.Application.Current.Shutdown();
+                return;
             }
-        }
-        catch
-        {
-            // Silently fail if the check doesn't succeed.
-        }
-    }
-
-    public class GithubBranch
-    {
-        [JsonProperty("commit")]
-        public GithubCommit Commit { get; set; }
-    }
-
-    public class GithubCommit
-    {
-        [JsonProperty("sha")]
-        public string Sha { get; set; }
-    }
-}
+    
+            base.OnStartup(e);
+        }}
 
