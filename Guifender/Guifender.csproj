@@ -55,6 +55,9 @@
 
   <ItemGroup>
     <None Remove="app_icon.png" />
+    <None Remove="led_gray.png" />
+    <None Remove="led_green.png" />
+    <None Remove="led_red.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -68,6 +71,9 @@
 
   <ItemGroup>
     <Resource Include="app_icon.png" />
+    <Resource Include="led_gray.png" />
+    <Resource Include="led_green.png" />
+    <Resource Include="led_red.png" />
   </ItemGroup>
 
 </Project>

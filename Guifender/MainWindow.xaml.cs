@@ -57,6 +57,8 @@ namespace Guifender
         private string _statusText; public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
         private bool _confirmOnExit; public bool ConfirmOnExit { get => _confirmOnExit; set { _confirmOnExit = value; OnPropertyChanged(); } }
         private bool _minimizeToTrayOnClose; public bool MinimizeToTrayOnClose { get => _minimizeToTrayOnClose; set { _minimizeToTrayOnClose = value; OnPropertyChanged(); } }
+        private int _statusClearDelaySeconds; public int StatusClearDelaySeconds { get => _statusClearDelaySeconds; set { _statusClearDelaySeconds = value; OnPropertyChanged(); } }
+
         private List<string> _updateSources; public List<string> UpdateSources { get => _updateSources; set { _updateSources = value; OnPropertyChanged(); } }
         private string _selectedUpdateSource; public string SelectedUpdateSource { get => _selectedUpdateSource; set { _selectedUpdateSource = value; OnPropertyChanged(); } }
         private int _throttleLimit; public int ThrottleLimit { get => _throttleLimit; set { _throttleLimit = value; OnPropertyChanged(); } }
@@ -65,34 +67,23 @@ namespace Guifender
         private string _antivirusSignatureVersion; public string AntivirusSignatureVersion { get => _antivirusSignatureVersion; set { _antivirusSignatureVersion = value; OnPropertyChanged(); } }
         private string _antivirusSignatureLastUpdated; public string AntivirusSignatureLastUpdated { get => _antivirusSignatureLastUpdated; set { _antivirusSignatureLastUpdated = value; OnPropertyChanged(); } }
         private string _lastUpdateCheckString; public string LastUpdateCheckString { get => _lastUpdateCheckString; set { _lastUpdateCheckString = value; OnPropertyChanged(); } }
+        private bool _isScheduledUpdateEnabled; public bool IsScheduledUpdateEnabled { get => _isScheduledUpdateEnabled; set { _isScheduledUpdateEnabled = value; OnPropertyChanged(); SetupUpdateScheduler(); } }
+        private int _scheduledUpdateIntervalHours; public int ScheduledUpdateIntervalHours { get => _scheduledUpdateIntervalHours; set { _scheduledUpdateIntervalHours = value; OnPropertyChanged(); SetupUpdateScheduler(); } }
+        private string _nextScheduledUpdateString; public string NextScheduledUpdateString { get => _nextScheduledUpdateString; set { _nextScheduledUpdateString = value; OnPropertyChanged(); } }
 
-        private bool _isScheduledUpdateEnabled;
-        public bool IsScheduledUpdateEnabled
-        {
-            get => _isScheduledUpdateEnabled;
-            set { _isScheduledUpdateEnabled = value; OnPropertyChanged(); SetupUpdateScheduler(); }
+        private List<string> _scanTypes; public List<string> ScanTypes { get => _scanTypes; set { _scanTypes = value; OnPropertyChanged(); } }
+        private string _selectedScanType; 
+        public string SelectedScanType 
+        { 
+            get => _selectedScanType;
+            set { _selectedScanType = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsCustomScan)); } 
         }
+        private string _scanPath; public string ScanPath { get => _scanPath; set { _scanPath = value; OnPropertyChanged(); } }
+        private int _scanThrottleLimit; public int ScanThrottleLimit { get => _scanThrottleLimit; set { _scanThrottleLimit = value; OnPropertyChanged(); } }
+        private string _scanOutputText; public string ScanOutputText { get => _scanOutputText; set { _scanOutputText = value; OnPropertyChanged(); } }
+        private bool _isBusy; public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
+        public bool IsCustomScan => SelectedScanType == "CustomScan";
 
-        private int _scheduledUpdateIntervalHours;
-        public int ScheduledUpdateIntervalHours
-        {
-            get => _scheduledUpdateIntervalHours;
-            set { _scheduledUpdateIntervalHours = value; OnPropertyChanged(); SetupUpdateScheduler(); }
-        }
-
-        private string _nextScheduledUpdateString;
-        public string NextScheduledUpdateString
-        {
-            get => _nextScheduledUpdateString;
-            set { _nextScheduledUpdateString = value; OnPropertyChanged(); }
-        }
-
-        private int _statusClearDelaySeconds; 
-        public int StatusClearDelaySeconds
-        {
-            get => _statusClearDelaySeconds;
-            set { _statusClearDelaySeconds = value; OnPropertyChanged(); }
-        }
         #endregion
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -101,9 +92,13 @@ namespace Guifender
         public MainWindow()
         {
             InitializeComponent();
-            Logger.ArchiveLogFileIfNeeded();
-            SetStatus("Guifender starting...", clearAfter: false);
+            Logger.Write("Guifender starting...");
+
             UpdateSources = new List<string> { "MicrosoftUpdateServer", "InternalDefinitionUpdateServer", "MMPC" };
+            ScanTypes = new List<string> { "QuickScan", "FullScan", "CustomScan" };
+            SelectedScanType = ScanTypes[0];
+            ScanThrottleLimit = 0;
+
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string settingsDir = Path.Combine(appDataPath, "Guifender");
             Directory.CreateDirectory(settingsDir);
@@ -280,6 +275,79 @@ namespace Guifender
         }
         #endregion
 
+        #region Scan Logic
+        private async void StartScan_Click(object sender, RoutedEventArgs e)
+        {
+            IsBusy = true;
+            SetStatus("Starting scan...", clearAfter: false);
+            ScanOutputText = "Preparing to scan...\n";
+
+            var command = new StringBuilder("Start-MpScan");
+            command.Append($" -ScanType {SelectedScanType}");
+
+            if (IsCustomScan)
+            {
+                if (string.IsNullOrWhiteSpace(ScanPath) || !Directory.Exists(ScanPath) && !File.Exists(ScanPath))
+                {
+                    ScanOutputText += "ERROR: A valid file or directory path is required for a custom scan.";
+                    SetStatus("Scan failed: Invalid path.");
+                    IsBusy = false;
+                    return;
+                }
+                command.Append($" -ScanPath \"{ScanPath}\"");
+            }
+
+            if (ScanThrottleLimit > 0 && ScanThrottleLimit <= 100)
+            {
+                command.Append($" -ThrottleLimit {ScanThrottleLimit}");
+            }
+
+            ScanOutputText += $"Running command: {command.ToString()}\n\n";
+
+            try
+            {
+                using (PowerShell ps = PowerShell.Create())
+                {
+                    ps.AddScript(command.ToString());
+                    var psOutput = await Task.Factory.FromAsync(ps.BeginInvoke(), ps.EndInvoke);
+                    StringBuilder sb = new StringBuilder();
+                    if (ps.Streams.Error.Count > 0)
+                    {
+                        foreach (var error in ps.Streams.Error) { sb.AppendLine($"ERROR: {error.ToString()}"); }
+                        SetStatus("Scan failed.");
+                    }
+                    else
+                    {
+                        if (psOutput != null) { foreach (var item in psOutput) { if (item != null) { sb.AppendLine(item.ToString()); } } }
+                        if (sb.Length == 0) { sb.AppendLine("Scan completed with no output."); }
+                        SetStatus("Scan complete.");
+                    }
+                    ScanOutputText += sb.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                ScanOutputText += $"\nEXCEPTION: {ex.Message}";
+                SetStatus("Scan failed with an exception.");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private void Browse_Click(object sender, RoutedEventArgs e)
+        {
+            using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    ScanPath = dialog.SelectedPath;
+                }
+            }
+        }
+        #endregion
+
         #region Update and Scheduling Logic
         private void SetupUpdateScheduler()
         {
@@ -295,6 +363,7 @@ namespace Guifender
 
         private async void ScheduledUpdateTimer_Callback(object state)
         {
+            IsBusy = true;
             await Dispatcher.InvokeAsync(() => SetStatus("Running scheduled update...", clearAfter: false));
             bool success = await PerformUpdateAsync(isScheduled: true);
             await Dispatcher.InvokeAsync(() =>
@@ -302,6 +371,7 @@ namespace Guifender
                 SetStatus(success ? "Scheduled update complete." : "Scheduled update failed.");
                 SetupUpdateScheduler();
             });
+            IsBusy = false;
         }
 
         private async void RunUpdate_Click(object sender, RoutedEventArgs e)
@@ -312,6 +382,7 @@ namespace Guifender
 
         private async Task<bool> PerformUpdateAsync(bool isScheduled)
         {
+            if (!isScheduled) { IsBusy = true; }
             await Dispatcher.InvokeAsync(() =>
             {
                 if (!isScheduled) { UpdateOutputText = ""; }
@@ -360,6 +431,7 @@ namespace Guifender
                 else if (!success) { SetStatus("Update failed."); }
             });
 
+            if (!isScheduled) { IsBusy = false; }
             return success;
         }
         #endregion
