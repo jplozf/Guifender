@@ -1,0 +1,58 @@
+<Window x:Class="Guifender.ScheduledScanWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Guifender"
+        mc:Ignorable="d"
+        Title="Scheduled Scan"
+        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterOwner">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBox Grid.Column="1" Text="{Binding Scan.Name, UpdateSourceTrigger=PropertyChanged}" Width="250" Margin="0,5"/>
+
+        <TextBlock Grid.Row="1" Text="Scan Type:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ScanTypes}" SelectedItem="{Binding Scan.ScanType}" Margin="0,5"/>
+
+        <TextBlock Grid.Row="2" Text="Path:" VerticalAlignment="Center" Margin="0,0,10,0" IsEnabled="{Binding IsCustomScan}"/>
+        <Grid Grid.Row="2" Grid.Column="1" IsEnabled="{Binding IsCustomScan}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Text="{Binding Scan.Path, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,5,5"/>
+            <Button Grid.Column="1" Content="Browse..." Click="Browse_Click" Margin="0,5"/>
+        </Grid>
+
+        <TextBlock Grid.Row="3" Text="Time:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Scan.TimeOfDay, StringFormat=t}" Width="100" HorizontalAlignment="Left" Margin="0,5"/>
+
+        <TextBlock Grid.Row="4" Text="Days:" VerticalAlignment="Center" Margin="0,10,10,0"/>
+        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Vertical" Margin="0,10,0,0">
+            <CheckBox IsChecked="{Binding Scan.IsMonday}" Content="Monday"/>
+            <CheckBox IsChecked="{Binding Scan.IsTuesday}" Content="Tuesday"/>
+            <CheckBox IsChecked="{Binding Scan.IsWednesday}" Content="Wednesday"/>
+            <CheckBox IsChecked="{Binding Scan.IsThursday}" Content="Thursday"/>
+            <CheckBox IsChecked="{Binding Scan.IsFriday}" Content="Friday"/>
+            <CheckBox IsChecked="{Binding Scan.IsSaturday}" Content="Saturday"/>
+            <CheckBox IsChecked="{Binding Scan.IsSunday}" Content="Sunday"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="OK" IsDefault="True" Click="OK_Click" MinWidth="60" Margin="0,0,10,0"/>
+            <Button Content="Cancel" IsCancel="True" MinWidth="60"/>
+        </StackPanel>
+    </Grid>
+</Window>

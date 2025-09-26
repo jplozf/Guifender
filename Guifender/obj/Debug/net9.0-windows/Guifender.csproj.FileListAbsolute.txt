@@ -376,3 +376,6 @@ C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\App.b
 C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guifender.Properties.Resources.resources
 C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guifender.csproj.GenerateResource.cache
 C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\Guifender_Content.g.cs
+C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\ScheduledScanWindow.g.cs
+C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\jplig\Projets\cs.net\Guifender\Guifender\obj\Debug\net9.0-windows\ScheduledScanWindow.baml

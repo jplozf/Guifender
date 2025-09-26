@@ -1,15 +1,18 @@
-﻿<Window x:Class="Guifender.MainWindow"
+<Window x:Class="Guifender.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Guifender"
         mc:Ignorable="d"
-        Title="Guifender" Height="450" Width="800"
+        Title="Guifender" Height="600" Width="850"
         DataContext="{Binding RelativeSource={RelativeSource Self}}">
-    
+
+    <Window.Resources>
+        <local:NullToFalseConverter x:Key="NullToFalseConverter"/>
+    </Window.Resources>
+
     <DockPanel>
-        
         <StatusBar DockPanel.Dock="Bottom">
             <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=StatusBar}}">
                 <Grid.ColumnDefinitions>
@@ -42,49 +45,57 @@
                 </ScrollViewer>
             </TabItem>
             <TabItem Header="Scan">
-                <Grid Margin="10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                <DockPanel Margin="10">
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Add..." Click="AddScheduledScan_Click" Margin="0,0,5,0"/>
+                        <Button Content="Edit..." Click="EditScheduledScan_Click" IsEnabled="{Binding SelectedScheduledScan, Converter={StaticResource NullToFalseConverter}}"/>
+                        <Button Content="Remove" Click="RemoveScheduledScan_Click" IsEnabled="{Binding SelectedScheduledScan, Converter={StaticResource NullToFalseConverter}}"/>
+                    </StackPanel>
 
-                    <GroupBox Header="Scan Options" IsEnabled="{Binding !IsScanning}">
-                        <Grid Margin="5">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Text="Scan Type:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ComboBox Grid.Column="1" ItemsSource="{Binding ScanTypes}" SelectedItem="{Binding SelectedScanType}" Margin="0,5"/>
-
-                            <TextBlock Grid.Row="1" Text="Custom Path:" VerticalAlignment="Center" Margin="0,0,5,0" IsEnabled="{Binding IsCustomScan}"/>
-                            <Grid Grid.Row="1" Grid.Column="1" IsEnabled="{Binding IsCustomScan}">
+                    <StackPanel>
+                        <GroupBox Header="Immediate Scan" Margin="0,0,0,10">
+                            <Grid Margin="5">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox Text="{Binding ScanPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,5,5"/>
-                                <Button Grid.Column="1" Content="Browse..." Click="Browse_Click" Margin="0,5"/>
+
+                                <TextBlock Text="Scan Type:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <ComboBox Grid.Column="1" Name="ImmediateScanTypeComboBox" Margin="0,5">
+                                    <ComboBoxItem Content="Quick"/>
+                                    <ComboBoxItem Content="Full"/>
+                                    <ComboBoxItem Content="Custom"/>
+                                </ComboBox>
+
+                                <TextBlock Grid.Row="1" Text="Path:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Name="ImmediateScanPathTextBox" Margin="0,5"/>
+                                <Button Grid.Row="1" Grid.Column="2" Content="Browse..." Margin="5,0,0,0" Click="BrowseImmediateScanPath_Click"/>
+
+                                <Button Grid.Row="2" Grid.ColumnSpan="3" Content="Start Scan" Margin="0,10,0,0" Click="StartImmediateScan_Click"/>
                             </Grid>
+                        </GroupBox>
 
-                            <TextBlock Grid.Row="2" Text="Throttle Limit (%):" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ScanThrottleLimit, Mode=TwoWay}" Margin="0,5"/>
-                        </Grid>
-                    </GroupBox>
-
-                    <Button Grid.Row="1" Content="Start Scan" Click="StartScan_Click" Margin="0,10" IsEnabled="{Binding !IsBusy}"/>
-
-                    <ScrollViewer Grid.Row="2" Margin="0,5">
-                        <TextBlock Text="{Binding ScanOutputText}" TextWrapping="Wrap"/>
-                    </ScrollViewer>
-                </Grid>
+                        <GroupBox Header="Scheduled Scans">
+                            <ListView ItemsSource="{Binding ScheduledScans}" SelectedItem="{Binding SelectedScheduledScan}">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="150"/>
+                                        <GridViewColumn Header="Type" DisplayMemberBinding="{Binding ScanType}" Width="100"/>
+                                        <GridViewColumn Header="Time" DisplayMemberBinding="{Binding TimeOfDay, StringFormat='t'}" Width="100"/>
+                                        <GridViewColumn Header="Days" DisplayMemberBinding="{Binding DaysOfWeek}" Width="200"/>
+                                        <GridViewColumn Header="Path" DisplayMemberBinding="{Binding Path}" Width="250"/>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </GroupBox>
+                    </StackPanel>
+                </DockPanel>
             </TabItem>
             <TabItem Header="Update">
                 <Grid Margin="10">
@@ -92,14 +103,8 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
 
                     <GroupBox Header="Current Signature" Grid.ColumnSpan="2" Margin="0,0,0,10">
                         <Grid Margin="5">
@@ -121,7 +126,7 @@
                         </Grid>
                     </GroupBox>
 
-                    <GroupBox Header="Manual Update" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                    <GroupBox Header="Manual Update" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,10" IsEnabled="{Binding !IsBusy}">
                         <Grid Margin="5">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -142,60 +147,58 @@
 
                             <CheckBox Grid.Row="2" Grid.ColumnSpan="2" IsChecked="{Binding AsJob, Mode=TwoWay}" Content="Run as a background job" Margin="0,5"/>
 
-                                                <Button Grid.Row="3" Grid.ColumnSpan="2" Content="Run Update" Click="RunUpdate_Click" Margin="0,10,0,0" IsEnabled="{Binding !IsBusy}"/>
-                                            </Grid>
-                                        </GroupBox>
-                            
-                                        <GroupBox Header="Scheduled Update" Grid.Row="2" Grid.ColumnSpan="2" IsEnabled="{Binding !IsBusy}">
-                                            <Grid Margin="5">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-                                                <CheckBox IsChecked="{Binding IsScheduledUpdateEnabled, Mode=TwoWay}" Content="Enable scheduled updates"/>
-                                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
-                                                    <TextBlock Text="Update every" VerticalAlignment="Center"/>
-                                                    <TextBox Text="{Binding ScheduledUpdateIntervalHours, Mode=TwoWay}" Width="40" Margin="5,0" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="hours" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
-                                                    <TextBlock Text="Next scheduled update:" FontWeight="Bold"/>
-                                                    <TextBlock Text="{Binding NextScheduledUpdateString}" Margin="5,0,0,0"/>
-                                                </StackPanel>
-                                            </Grid>
-                                        </GroupBox>
-                            
-                                        <ScrollViewer Grid.Row="5" Grid.ColumnSpan="2" Margin="0,10,0,0">
-                                            <TextBlock Text="{Binding UpdateOutputText}" TextWrapping="Wrap"/>
-                                        </ScrollViewer>
-                                    </Grid>
-                                </TabItem>
-                                <TabItem Header="Config">
-                                    <StackPanel Margin="10">
-                                        <CheckBox IsChecked="{Binding ConfirmOnExit, Mode=TwoWay}" Content="Confirm before exiting application"/>
-                                        <CheckBox IsChecked="{Binding MinimizeToTrayOnClose, Mode=TwoWay}" Content="Minimize to system tray on close" Margin="0,5,0,0"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                            <TextBlock Text="Status bar message display time (seconds):" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding StatusClearDelaySeconds, Mode=TwoWay}" Width="40" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </TabItem>
-                                <TabItem Header="About">
-                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Image Source="{Binding Icon, RelativeSource={RelativeSource AncestorType=Window}}" Width="64" Height="64" Margin="10"/>
-                                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
-                                        <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center">
-                                            <Hyperlink NavigateUri="https://github.com/jplozf/Guifender" RequestNavigate="Hyperlink_RequestNavigate">
-                                                https://github.com/jplozf/Guifender
-                                            </Hyperlink>
-                                        </TextBlock>
-                                        <TextBlock x:Name="VersionCheckTextBlock" Margin="0,15,0,0" HorizontalAlignment="Center" FontWeight="Bold"/>
-                                    </StackPanel>
-                                </TabItem>
-                            </TabControl>
-                            </DockPanel>
-                            <Window.Resources>
-                            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-                            </Window.Resources>
-                            </Window>
+                            <Button Grid.Row="3" Grid.ColumnSpan="2" Content="Run Update" Click="RunUpdate_Click" Margin="0,10,0,0"/>
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="Scheduled Update" Grid.Row="2" Grid.ColumnSpan="2" IsEnabled="{Binding !IsBusy}">
+                        <Grid Margin="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <CheckBox IsChecked="{Binding IsScheduledUpdateEnabled, Mode=TwoWay}" Content="Enable scheduled updates"/>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                                <TextBlock Text="Update every" VerticalAlignment="Center"/>
+                                <TextBox Text="{Binding ScheduledUpdateIntervalHours, Mode=TwoWay}" Width="40" Margin="5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="hours" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
+                                <TextBlock Text="Next scheduled update:" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding NextScheduledUpdateString}" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+
+                    <ScrollViewer Grid.Row="3" Grid.ColumnSpan="2" Margin="0,10,0,0">
+                        <TextBlock Text="{Binding UpdateOutputText}" TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Config">
+                <StackPanel Margin="10">
+                    <CheckBox IsChecked="{Binding DisplayNotifications, Mode=TwoWay}" Content="Display notifications"/>
+                    <CheckBox IsChecked="{Binding ConfirmOnExit, Mode=TwoWay}" Content="Confirm before exiting application" Margin="0,5,0,0"/>
+                    <CheckBox IsChecked="{Binding MinimizeToTrayOnClose, Mode=TwoWay}" Content="Minimize to system tray on close" Margin="0,5,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Status bar message display time (seconds):" VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding StatusClearDelaySeconds, Mode=TwoWay}" Width="40" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="About">
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image Source="{Binding Icon, RelativeSource={RelativeSource AncestorType=Window}}" Width="64" Height="64" Margin="10"/>
+                    <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
+                    <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center">
+                        <Hyperlink NavigateUri="https://github.com/jplozf/Guifender" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://github.com/jplozf/Guifender
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock x:Name="VersionCheckTextBlock" Margin="0,15,0,0" HorizontalAlignment="Center" FontWeight="Bold"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
