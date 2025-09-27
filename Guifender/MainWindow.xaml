@@ -53,7 +53,7 @@
                     </StackPanel>
 
                     <StackPanel>
-                        <GroupBox Header="Immediate Scan" Margin="0,0,0,10">
+                        <GroupBox Header="Manual Scan" Margin="0,0,0,10">
                             <Grid Margin="5">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -67,17 +67,17 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock Text="Scan Type:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                <ComboBox Grid.Column="1" Name="ImmediateScanTypeComboBox" Margin="0,5">
+                                <ComboBox Grid.Column="1" Name="ManualScanTypeComboBox" Margin="0,5">
                                     <ComboBoxItem Content="Quick"/>
                                     <ComboBoxItem Content="Full"/>
                                     <ComboBoxItem Content="Custom"/>
                                 </ComboBox>
 
                                 <TextBlock Grid.Row="1" Text="Path:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                <TextBox Grid.Row="1" Grid.Column="1" Name="ImmediateScanPathTextBox" Margin="0,5"/>
-                                <Button Grid.Row="1" Grid.Column="2" Content="Browse..." Margin="5,0,0,0" Click="BrowseImmediateScanPath_Click"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Name="ManualScanPathTextBox" Margin="0,5"/>
+                                <Button Grid.Row="1" Grid.Column="2" Content="Browse..." Margin="5,0,0,0" Click="BrowseManualScanPath_Click"/>
 
-                                <Button Grid.Row="2" Grid.ColumnSpan="3" Content="Start Scan" Margin="0,10,0,0" Click="StartImmediateScan_Click"/>
+                                <Button Grid.Row="2" Grid.ColumnSpan="3" Content="Start Scan" Margin="0,10,0,0" Click="StartManualScan_Click"/>
                             </Grid>
                         </GroupBox>
 

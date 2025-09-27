@@ -302,7 +302,7 @@ namespace Guifender
             }
         }
 
-        private async void StartImmediateScan_Click(object sender, RoutedEventArgs e)
+        private async void StartManualScan_Click(object sender, RoutedEventArgs e)
         {
             if (IsBusy)
             {
@@ -310,14 +310,14 @@ namespace Guifender
                 return;
             }
 
-            string scanType = ((ComboBoxItem)ImmediateScanTypeComboBox.SelectedItem)?.Content.ToString();
+            string scanType = ((ComboBoxItem)ManualScanTypeComboBox.SelectedItem)?.Content.ToString();
             if (scanType == null)
             {
                 SetStatus("Please select a scan type.");
                 return;
             }
 
-            string path = ImmediateScanPathTextBox.Text;
+            string path = ManualScanPathTextBox.Text;
             string psScanType = "";
 
             switch (scanType)
@@ -337,29 +337,29 @@ namespace Guifender
             try
             {
                 IsBusy = true;
-                SetStatus("Starting immediate scan...", clearAfter: false);
-                await PerformScanAsync(psScanType, path, "Immediate Scan");
-                SetStatus("Immediate scan finished.");
+                SetStatus("Starting Manual scan...", clearAfter: false);
+                await PerformScanAsync(psScanType, path, "Manual Scan");
+                SetStatus("Manual scan finished.");
                 success = true;
             }
             catch (Exception ex)
             {
-                SetStatus($"Immediate scan failed: {ex.Message}");
+                SetStatus($"Manual scan failed: {ex.Message}");
             }
             finally
             {
                 IsBusy = false;
                 if (DisplayNotifications)
-                    _notifyIcon.ShowBalloonTip("Immediate Scan", success ? "Scan finished." : "Scan failed.", success ? BalloonIcon.Info : BalloonIcon.Error);
+                    _notifyIcon.ShowBalloonTip("Manual Scan", success ? "Scan finished." : "Scan failed.", success ? BalloonIcon.Info : BalloonIcon.Error);
             }
         }
 
-        private void BrowseImmediateScanPath_Click(object sender, RoutedEventArgs e)
+        private void BrowseManualScanPath_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                ImmediateScanPathTextBox.Text = dialog.SelectedPath;
+                ManualScanPathTextBox.Text = dialog.SelectedPath;
             }
         }
 
@@ -469,8 +469,29 @@ namespace Guifender
             await InitializeDataAsync();
         }
 
+        private bool IsUpdateProcessRunning()
+        {
+            Process[] processes = Process.GetProcessesByName("MpCmdRun");
+            return processes.Length > 0;
+        }
+
         private async Task<bool> PerformUpdateAsync(bool isScheduled)
         {
+            if (IsUpdateProcessRunning())
+            {
+                string message = "An update is already in progress. Skipping.";
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    SetStatus(message);
+                    if (!isScheduled)
+                    {
+                        UpdateOutputText += message + Environment.NewLine;
+                    }
+                });
+                Logger.Write(message);
+                return false;
+            }
+
             if (!isScheduled) { IsBusy = true; }
             await Dispatcher.InvokeAsync(() =>
             {
