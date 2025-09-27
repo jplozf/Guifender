@@ -185,6 +185,23 @@
                         <TextBlock Text="Status bar message display time (seconds):" VerticalAlignment="Center"/>
                         <TextBox Text="{Binding StatusClearDelaySeconds, Mode=TwoWay}" Width="40" Margin="5,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
+
+                    <GroupBox Header="Log Files" Margin="0,10,0,0">
+                        <ListView ItemsSource="{Binding LogFiles}" MouseDoubleClick="LogFiles_MouseDoubleClick">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="File" DisplayMemberBinding="{Binding}" Width="400"/>
+                                    <GridViewColumn Header="Actions">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="Delete" Click="DeleteLogFile_Click" Tag="{Binding}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </GroupBox>
                 </StackPanel>
             </TabItem>
             <TabItem Header="About">

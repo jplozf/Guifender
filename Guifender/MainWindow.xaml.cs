@@ -83,6 +83,8 @@ namespace Guifender
         private ScheduledScan _selectedScheduledScan; public ScheduledScan SelectedScheduledScan { get => _selectedScheduledScan; set { _selectedScheduledScan = value; OnPropertyChanged(); } }
         private bool _isBusy; public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
 
+        public ObservableCollection<string> LogFiles { get; set; } = new ObservableCollection<string>();
+
         #endregion
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -106,7 +108,77 @@ namespace Guifender
             _ = InitializeDataAsync();
             SetupUpdateScheduler();
             SetupScanScheduler();
+            LoadLogFiles();
         }
+
+        #region Log Files
+        private void LoadLogFiles()
+        {
+            LogFiles.Clear();
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string logDirectory = Path.Combine(appDataPath, "Guifender");
+
+            if (Directory.Exists(logDirectory))
+            {
+                var logFiles = Directory.GetFiles(logDirectory, "Guifender*.log").Concat(Directory.GetFiles(logDirectory, "Guifender*.zip"));
+                foreach (var logFile in logFiles.OrderByDescending(f => f))
+                {
+                    LogFiles.Add(Path.GetFileName(logFile));
+                }
+            }
+        }
+
+        private void LogFiles_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is System.Windows.Controls.ListView listView && listView.SelectedItem is string fileName)
+            {
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string logDirectory = Path.Combine(appDataPath, "Guifender");
+                string filePath = Path.Combine(logDirectory, fileName);
+
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        SetStatus($"Failed to open log file: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private void DeleteLogFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is string fileName)
+            {
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string logDirectory = Path.Combine(appDataPath, "Guifender");
+                string filePath = Path.Combine(logDirectory, fileName);
+
+                if (File.Exists(filePath))
+                {
+                    var result = System.Windows.MessageBox.Show($"Are you sure you want to delete '{fileName}'?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            File.Delete(filePath);
+                            SetStatus($"Log file '{fileName}' deleted.");
+                            LoadLogFiles(); // Refresh the list
+                        }
+                        catch (Exception ex)
+                        {
+                            SetStatus($"Failed to delete log file: {ex.Message}");
+                        }
+                    }
+                }
+            }
+        }
+        #endregion
+
 
         #region Core App Logic
         private string GetVersionInfo()
